@@ -226,6 +226,19 @@ function setupEventListeners() {
         });
     });
 
+    // Time Slider
+    els.yearSlider.addEventListener('input', (e) => {
+        state.startYear = parseInt(e.target.value);
+        els.yearDisplay.textContent = `Since ${state.startYear}`;
+    });
+
+    // Refresh charts when slider changes (if data exists)
+    els.yearSlider.addEventListener('change', () => {
+        if (state.countryDataCache && Object.keys(state.countryDataCache).length > 0) {
+            processAndRenderData();
+        }
+    });
+
     // Bulk Actions
     els.btnSelectAllInd.addEventListener('click', () => {
         const visibleItems = Array.from(els.indicatorList.querySelectorAll('.indicator-item:not(.hidden) input'));
@@ -321,6 +334,10 @@ function processAndRenderData() {
             if (!countryData) return;
 
             let indData = countryData.filter(d => d.indicator === indCode);
+
+            // Filter by Time Period
+            indData = indData.filter(d => parseInt(d.time) >= state.startYear);
+
             if (indData.length === 0) return;
 
             // Simplify logic: Filter for Total/Aggregate
