@@ -16,6 +16,7 @@ const state = {
     indicators: [],
     selectedCountries: new Set(), // Set of country codes
     selectedIndicators: new Set(),
+    startYear: 2010, // Default start year
     countryDataCache: {}, // { code: data[] }
     status: 'idle'
 };
@@ -30,6 +31,9 @@ const els = {
     indicatorSearch: document.getElementById('search-indicators'),
     btnSelectAllInd: document.getElementById('btn-select-all-ind'),
     btnClearInd: document.getElementById('btn-clear-ind'),
+
+    yearSlider: document.getElementById('year-slider'),
+    yearDisplay: document.getElementById('year-display'),
 
     generateBtn: document.getElementById('generate-btn'),
     statusMsg: document.getElementById('status-message'),

@@ -96,6 +96,30 @@ body {
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
 }
 
+/* Range Slider */
+.range-container {
+    padding: 0.5rem 0;
+}
+
+.range-container input[type=range] {
+    width: 100%;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.range-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-light);
+    margin-top: 0.25rem;
+}
+
+.range-labels .highlight {
+    color: var(--primary);
+    font-weight: 600;
+}
+
 /* Multi-select */
 .multi-select-container {
     border: 1px solid var(--border-dark);
