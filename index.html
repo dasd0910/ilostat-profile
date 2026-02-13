@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ILOSTAT Country Profile Generator</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://unpkg.com/fflate@0.8.0/umd/index.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Controls -->
+        <aside class="sidebar">
+            <div class="brand">
+                <h1>ILOSTAT <span class="light">Explore</span></h1>
+                <p>Labour Market Analysis</p>
+            </div>
+
+            <div class="control-group">
+                <label>Countries</label>
+                <div class="multi-select-container" id="country-multiselect">
+                    <div class="selected-tags" id="country-tags"></div>
+                    <input type="text" id="country-search" placeholder="Search & add country..." class="search-input">
+                    <div class="dropdown-list hidden" id="country-list"></div>
+                </div>
+                <small class="hint">Search and select multiple countries to compare.</small>
+            </div>
+
+            <div class="control-group">
+                <div class="label-row">
+                    <label for="search-indicators">Indicators</label>
+                    <div class="actions">
+                        <button id="btn-select-all-ind" class="text-btn">All</button>
+                        <button id="btn-clear-ind" class="text-btn">Clear</button>
+                    </div>
+                </div>
+                <input type="text" id="search-indicators" placeholder="Search indicators..." class="search-input">
+                <div class="indicators-list-container" id="indicators-list">
+                    <div class="loading-text">Loading indicators...</div>
+                </div>
+                <small class="hint">Select multiple indicators to compare over time.</small>
+            </div>
+
+            <button id="generate-btn" class="primary-btn" disabled>
+                Create Profile
+            </button>
+
+            <div id="status-message" class="status-message"></div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="main-header">
+                <h2 id="report-title">Select a country to begin</h2>
+                <div class="report-meta" id="report-meta"></div>
+            </header>
+
+            <div id="charts-container" class="charts-grid">
+                <!-- Charts will be injected here -->
+                <div class="empty-state">
+                    <div class="icon">📊</div>
+                    <p>Choose a country and indicators from the sidebar to generate a comprehensive labour market
+                        profile.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
