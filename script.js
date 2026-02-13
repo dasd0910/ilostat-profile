@@ -16,7 +16,7 @@ const state = {
     indicators: [],
     selectedCountries: new Set(), // Set of country codes
     selectedIndicators: new Set(),
-    startYear: 2010, // Default start year
+    startYear: 2000, // Default start year
     countryDataCache: {}, // { code: data[] }
     status: 'idle'
 };
