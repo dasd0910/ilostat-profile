@@ -54,6 +54,18 @@
                 <small class="hint">Select multiple indicators to compare over time.</small>
             </div>
 
+            <div class="control-group">
+                <label>Time Period</label>
+                <div class="range-container">
+                    <input type="range" id="year-slider" min="2000" max="2024" value="2010" step="1">
+                    <div class="range-labels">
+                        <span>2000</span>
+                        <span id="year-display" class="highlight">Since 2010</span>
+                        <span>2024</span>
+                    </div>
+                </div>
+            </div>
+
             <button id="generate-btn" class="primary-btn" disabled>
                 Create Profile
             </button>
