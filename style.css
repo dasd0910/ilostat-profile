@@ -307,12 +307,20 @@ body {
     border: 1px solid var(--border);
 }
 
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    gap: 1rem;
+}
+
 .chart-card h3 {
     font-size: 1rem;
     color: #1e293b;
-    margin-bottom: 1rem;
+    margin-bottom: 0;
     font-weight: 600;
-    height: 2.5em;
+    line-height: 1.4;
     /* specific height for multi-line titles */
     overflow: hidden;
     text-overflow: ellipsis;
@@ -320,6 +328,23 @@ body {
     -webkit-line-clamp: 2;
     line-clamp: 2;
     -webkit-box-orient: vertical;
+}
+
+.icon-btn {
+    background: #f1f5f9;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-main);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.icon-btn:hover {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
 }
 
 .canvas-container {

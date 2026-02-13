@@ -371,9 +371,21 @@ function createCompareChart(title, labels, datasets) {
     const div = document.createElement('div');
     div.className = 'chart-card';
 
+    // Header container for title and actions
+    const header = document.createElement('div');
+    header.className = 'chart-header';
+
     const h3 = document.createElement('h3');
     h3.textContent = title;
-    div.appendChild(h3);
+    header.appendChild(h3);
+
+    const downloadBtn = document.createElement('button');
+    downloadBtn.className = 'icon-btn';
+    downloadBtn.innerHTML = '⬇️ PNG';
+    downloadBtn.title = 'Download Chart Image';
+    header.appendChild(downloadBtn);
+
+    div.appendChild(header);
 
     const canvasContainer = document.createElement('div');
     canvasContainer.className = 'canvas-container';
@@ -383,7 +395,7 @@ function createCompareChart(title, labels, datasets) {
 
     els.chartsContainer.appendChild(div);
 
-    new Chart(canvas, {
+    const chart = new Chart(canvas, {
         type: 'line',
         data: {
             labels: labels,
@@ -426,6 +438,49 @@ function createCompareChart(title, labels, datasets) {
             }
         }
     });
+
+    downloadBtn.addEventListener('click', () => downloadChart(chart, title));
+}
+
+function downloadChart(chart, title) {
+    // strict safe-mode watermarking
+    const watermarkText = "Made with ILOSTAT Explore, made by Dibyaudh Das, ILO, with data from ILO STAT public website";
+
+    // Create a new canvas to combine chart and watermark
+    const originalCanvas = chart.canvas;
+    const padding = 40;
+    const footerHeight = 50;
+
+    const newCanvas = document.createElement('canvas');
+    newCanvas.width = originalCanvas.width + (padding * 2);
+    newCanvas.height = originalCanvas.height + (padding * 2) + footerHeight;
+    const ctx = newCanvas.getContext('2d');
+
+    // Fill background white
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, newCanvas.width, newCanvas.height);
+
+    // Draw Title
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 24px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(title, newCanvas.width / 2, 50);
+
+    // Draw Chart
+    // We need to use the original canvas image
+    ctx.drawImage(originalCanvas, padding, padding + 30);
+
+    // Draw Watermark
+    ctx.fillStyle = '#64748b';
+    ctx.font = '12px Inter, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(watermarkText, newCanvas.width - padding, newCanvas.height - 20);
+
+    // Trigger Download
+    const link = document.createElement('a');
+    link.download = `${title.substring(0, 30).trim()}_ilostat.png`;
+    link.href = newCanvas.toDataURL('image/png');
+    link.click();
 }
 
 window.addEventListener('DOMContentLoaded', init);
