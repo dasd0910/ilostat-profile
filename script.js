@@ -21,6 +21,17 @@ const state = {
     status: 'idle'
 };
 
+const ILO_COLORS = [
+    '#3A4D98', // ILO Blue (Chambray)
+    '#E40046', // ILO Red (Social Justice)
+    '#1E2DBE', // Persian Blue
+    '#230050', // Dark Blue
+    '#FA3C4B', // Light Red
+    '#00A3A1', // Teal (Complimentary)
+    '#FFC20E', // Yellow (Complimentary)
+    '#5D6770', // Grey
+];
+
 // DOM Elements
 const els = {
     countryTags: document.getElementById('country-tags'),
@@ -358,7 +369,7 @@ function processAndRenderData() {
             indData.sort((a, b) => parseInt(a.time) - parseInt(b.time));
 
             const countryLabel = state.countries.find(c => c.Code === countryCode)?.Label || countryCode;
-            const colorBase = `hsl(${(idx * 137.5) % 360}, 70%, 50%)`; // Distinct colors
+            const colorBase = ILO_COLORS[idx % ILO_COLORS.length]; // Cycle through ILO palette
 
             datasets.push({
                 label: countryLabel, // Or find Label from dictionary

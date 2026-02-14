@@ -1,6 +1,7 @@
 :root {
-    --primary: #2563eb;
-    --primary-hover: #1d4ed8;
+    --primary: #3A4D98;
+    /* ILO Blue */
+    --primary-hover: #2c3b7a;
     --bg-dark: #0f172a;
     --bg-sidebar: #1e293b;
     --bg-card: #ffffff;
