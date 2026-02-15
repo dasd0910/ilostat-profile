@@ -286,6 +286,30 @@ body {
     opacity: 0.7;
 }
 
+.secondary-btn {
+    background-color: transparent;
+    color: var(--text-light);
+    border: 1px solid var(--border-dark);
+    padding: 0.75rem;
+    border-radius: var(--radius);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    width: 100%;
+}
+
+.secondary-btn:hover:not(:disabled) {
+    border-color: var(--text-light);
+    color: var(--text-white);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.secondary-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .status-message {
     font-size: 0.8rem;
     min-height: 1.2em;

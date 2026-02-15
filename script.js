@@ -269,7 +269,12 @@ function setupEventListeners() {
 
     // Generate Report
     els.generateBtn.addEventListener('click', generateReport);
+
+    // Download CSV
+    document.getElementById('download-data-btn').addEventListener('click', downloadCSV);
 }
+
+// ... existing code ...
 
 async function generateReport() {
     if (state.selectedCountries.size === 0) return;
@@ -284,12 +289,76 @@ async function generateReport() {
 
         processAndRenderData();
         updateStatus('Report generated.');
+        document.getElementById('download-data-btn').disabled = false; // Enable download button
     } catch (err) {
         console.error(err);
         updateStatus('Error fetching data. Check console.');
         els.chartsContainer.innerHTML = '<div class="error-state">Error loading data.</div>';
     }
 }
+
+// ... existing code ...
+
+function downloadCSV() {
+    const selectedCntryCodes = Array.from(state.selectedCountries);
+    const selectedIndCodes = Array.from(state.selectedIndicators);
+
+    // headers
+    const rows = [['Country', 'Indicator', 'Year', 'Value', 'Unit', 'Status']];
+
+    selectedCntryCodes.forEach(countryCode => {
+        const countryData = state.countryDataCache[countryCode];
+        if (!countryData) return;
+
+        const countryLabel = state.countries.find(c => c.Code === countryCode)?.Label || countryCode;
+
+        selectedIndCodes.forEach(indCode => {
+            const indicatorMeta = state.indicators.find(i => i.Code === indCode);
+            const indLabel = indicatorMeta ? indicatorMeta.Label : indCode;
+
+            let indData = countryData.filter(d => d.indicator === indCode);
+
+            // Time Filter
+            indData = indData.filter(d => parseInt(d.time) >= state.startYear);
+
+            // Same filtering logic as charts
+            if (indData.length > 0) {
+                if (indData[0].sex) indData = indData.filter(d => d.sex === 'SEX_T');
+                if (indData.length > 0 && indData[0].classif1) {
+                    const totals = indData.filter(d => d.classif1.includes('_TOTAL') || d.classif1.includes('_AGGREGATE_TOTAL'));
+                    if (totals.length > 0) indData = totals;
+                    else {
+                        const firstClassif = indData[0].classif1;
+                        indData = indData.filter(d => d.classif1 === firstClassif);
+                    }
+                }
+            }
+
+            indData.forEach(d => {
+                rows.push([
+                    `"${countryLabel}"`, // Quote strings
+                    `"${indLabel}"`,
+                    d.time,
+                    d.obs_value,
+                    d.unit_measure || '',
+                    d.obs_status || ''
+                ]);
+            });
+        });
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8,"
+        + rows.map(e => e.join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "ilostat_export.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
 
 async function fetchAndCacheCountryData(countryCode) {
     // Return from cache if exists
