@@ -347,16 +347,21 @@ function downloadCSV() {
         });
     });
 
-    const csvContent = "data:text/csv;charset=utf-8,"
-        + rows.map(e => e.join(",")).join("\n");
+    const csvContent = rows.map(e => e.join(",")).join("\n");
 
-    const encodedUri = encodeURI(csvContent);
+    // Create a Blob for better browser compatibility and large file support
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "ilostat_export.csv");
+    link.href = url;
+    link.setAttribute("download", `ilostat_export_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
+
+    // Clean up
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 
 
