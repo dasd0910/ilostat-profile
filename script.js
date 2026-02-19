@@ -475,17 +475,33 @@ function processAndRenderData() {
 
             if (indData.length === 0) return;
 
-            // Simplify logic: Filter for Total/Aggregate
-            // if (indData[0].sex) indData = indData.filter(d => d.sex === 'SEX_T'); // REMOVED to support selection
+            // Simplify logic: Filter for Total/Aggregate across ALL classifications
+            // We need to ensure only ONE data point per year remains to avoid zig-zag lines.
 
-            if (indData.length > 0 && indData[0].classif1) {
-                const totals = indData.filter(d => d.classif1.includes('_TOTAL') || d.classif1.includes('_AGGREGATE_TOTAL'));
-                if (totals.length > 0) indData = totals;
-                else {
-                    const firstClassif = indData[0].classif1;
-                    indData = indData.filter(d => d.classif1 === firstClassif);
+            // Identify all classification columns present in the data (classif1, classif2, etc.)
+            const classificationKeys = Object.keys(indData[0]).filter(k => k.startsWith('classif'));
+
+            classificationKeys.forEach(key => {
+                // Check if this key has multiple values in the current filtered set
+                const values = new Set(indData.map(d => d[key]));
+                if (values.size <= 1) return; // Already unique
+
+                // Try to find a "Total" or "Aggregate" value
+                // Heuristic: contains _TOTAL, _AGGREGATE, or ends with _Total
+                let bestValue = Array.from(values).find(v =>
+                    v.includes('_TOTAL') ||
+                    v.includes('_AGGREGATE') ||
+                    v.endsWith('_Total')
+                );
+
+                // Fallback: If no Total, pick the first one (arbitrary but consistent)
+                if (!bestValue) {
+                    bestValue = Array.from(values)[0];
                 }
-            }
+
+                // Apply strict filter
+                indData = indData.filter(d => d[key] === bestValue);
+            });
 
             // Collect time points
             indData.forEach(d => allLabels.add(d.time));
