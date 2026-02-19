@@ -159,33 +159,71 @@ function removeCountry(code, tagElement) {
     updateGenerateButton();
 }
 
-function renderIndicators() {
+function renderIndicators(filter = '') {
     els.indicatorList.innerHTML = '';
-    const fragment = document.createDocumentFragment();
+    const term = filter.toLowerCase();
+
+    // Group indicators
+    const groups = {};
+    const otherGroup = 'Other';
 
     state.indicators.forEach(ind => {
-        const item = document.createElement('label');
-        item.className = 'indicator-item';
-        item.dataset.label = ind.Label.toLowerCase();
+        // Simple heuristic for grouping
+        let group = otherGroup;
+        if (ind.Code.startsWith('SDG_')) group = 'SDG Indicators';
+        else if (ind.Code.startsWith('EMP_')) group = 'Employment';
+        else if (ind.Code.startsWith('UNE_')) group = 'Unemployment';
+        else if (ind.Code.startsWith('LU_')) group = 'Labour Underutilization';
+        else if (ind.Code.startsWith('EAP_')) group = 'Labour Force';
+        else if (ind.Code.startsWith('POP_')) group = 'Population';
+        else if (ind.Code.startsWith('MIG_')) group = 'Migration';
+        else if (ind.Code.startsWith('WAG_')) group = 'Wages';
+        else if (ind.Code.startsWith('HOW_')) group = 'Hours of Work';
+        else if (ind.Code.startsWith('MST_')) group = 'Monthly Data';
 
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.value = ind.Code;
-        // Check if already selected (useful if we re-render)
-        checkbox.checked = state.selectedIndicators.has(ind.Code);
-
-        checkbox.addEventListener('change', (e) => toggleIndicator(ind, e.target.checked));
-
-        const text = document.createElement('span');
-        text.textContent = ind.Label;
-
-        item.appendChild(checkbox);
-        item.appendChild(text);
-        fragment.appendChild(item);
+        if (!groups[group]) groups[group] = [];
+        groups[group].push(ind);
     });
 
-    els.indicatorList.appendChild(fragment);
+    // Render groups
+    const sortedGroups = Object.keys(groups).sort((a, b) => {
+        if (a === otherGroup) return 1;
+        if (b === otherGroup) return -1;
+        return a.localeCompare(b);
+    });
+
+    sortedGroups.forEach(groupName => {
+        const groupItems = groups[groupName].filter(ind => {
+            return !term || ind.Label.toLowerCase().includes(term) || ind.Code.toLowerCase().includes(term);
+        });
+
+        if (groupItems.length === 0) return;
+
+        const groupHeader = document.createElement('div');
+        groupHeader.className = 'group-header';
+        groupHeader.textContent = groupName;
+        els.indicatorList.appendChild(groupHeader);
+
+        groupItems.forEach(ind => {
+            const item = document.createElement('label');
+            item.className = 'indicator-item';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = ind.Code;
+            checkbox.checked = state.selectedIndicators.has(ind.Code);
+            checkbox.addEventListener('change', (e) => toggleIndicator(ind, e.target.checked));
+
+            const text = document.createElement('span');
+            text.textContent = ind.Label;
+
+            item.appendChild(checkbox);
+            item.appendChild(text);
+            els.indicatorList.appendChild(item);
+        });
+    });
 }
+
 
 // Interaction Handlers
 function toggleIndicator(indicator, isChecked) {
@@ -224,18 +262,9 @@ function setupEventListeners() {
 
     // Indicator Search
     els.indicatorSearch.addEventListener('input', (e) => {
-        const term = e.target.value.toLowerCase();
-        const items = els.indicatorList.querySelectorAll('.indicator-item');
-
-        items.forEach(item => {
-            const label = item.dataset.label;
-            if (label.includes(term)) {
-                item.classList.remove('hidden');
-            } else {
-                item.classList.add('hidden');
-            }
-        });
+        renderIndicators(e.target.value);
     });
+
 
     // Time Slider
     els.yearSlider.addEventListener('input', (e) => {
@@ -393,6 +422,9 @@ async function fetchAndCacheCountryData(countryCode) {
     });
 }
 
+// Helper to manage chart state (dimensions)
+const chartStates = {}; // { 'indCode': { sex: 'SEX_T' } }
+
 function processAndRenderData() {
     const selectedCntryCodes = Array.from(state.selectedCountries);
     const selectedIndCodes = Array.from(state.selectedIndicators);
@@ -406,6 +438,13 @@ function processAndRenderData() {
 
     // For each indicator, create a comparison chart
     selectedIndCodes.forEach(indCode => {
+        // Initialize state if new
+        if (!chartStates[indCode]) {
+            chartStates[indCode] = { sex: 'SEX_T' };
+        }
+
+        const currentSex = chartStates[indCode].sex;
+
         // Find label
         const indicatorMeta = state.indicators.find(i => i.Code === indCode);
         const label = indicatorMeta ? indicatorMeta.Label : indCode;
@@ -414,19 +453,31 @@ function processAndRenderData() {
         const datasets = [];
         let allLabels = new Set(); // To unify X-axis (years)
 
+        // Collect Available Dimensions (e.g. check if SEX_M/SEX_F exist in data)
+        const availableSexes = new Set();
+
         selectedCntryCodes.forEach((countryCode, idx) => {
             const countryData = state.countryDataCache[countryCode];
             if (!countryData) return;
 
             let indData = countryData.filter(d => d.indicator === indCode);
 
+            // Check available sexes before filtering
+            indData.forEach(d => {
+                if (d.sex) availableSexes.add(d.sex);
+            });
+
             // Filter by Time Period
             indData = indData.filter(d => parseInt(d.time) >= state.startYear);
+
+            // Filter by Current Dimension State
+            indData = indData.filter(d => d.sex === currentSex);
 
             if (indData.length === 0) return;
 
             // Simplify logic: Filter for Total/Aggregate
-            if (indData[0].sex) indData = indData.filter(d => d.sex === 'SEX_T');
+            // if (indData[0].sex) indData = indData.filter(d => d.sex === 'SEX_T'); // REMOVED to support selection
+
             if (indData.length > 0 && indData[0].classif1) {
                 const totals = indData.filter(d => d.classif1.includes('_TOTAL') || d.classif1.includes('_AGGREGATE_TOTAL'));
                 if (totals.length > 0) indData = totals;
@@ -461,8 +512,38 @@ function processAndRenderData() {
             return;
         }
 
+        // Prepare Dimension Options
+        const dimensions = [];
+        // Map codes to labels (hardcoded fallback)
+        const sexLabels = { 'SEX_T': 'Total', 'SEX_F': 'Female', 'SEX_M': 'Male' };
+
+        if (availableSexes.size > 1) {
+            // Sort: Total, Female, Male
+            const order = ['SEX_T', 'SEX_F', 'SEX_M'];
+            Array.from(availableSexes)
+                .sort((a, b) => order.indexOf(a) - order.indexOf(b))
+                .forEach(sexCode => {
+                    dimensions.push({
+                        value: sexCode,
+                        label: sexLabels[sexCode] || sexCode,
+                        selected: sexCode === currentSex
+                    });
+                });
+        }
+
         const sortedLabels = Array.from(allLabels).sort((a, b) => parseInt(a) - parseInt(b));
-        createCompareChart(label, sortedLabels, datasets);
+        createCompareChart(
+            label,
+            sortedLabels,
+            datasets,
+            dimensions,
+            (newSex) => {
+                // Update state and re-render only this chart? 
+                // Currently re-renders all, but that's safe for consistency
+                chartStates[indCode].sex = newSex;
+                processAndRenderData();
+            }
+        );
     });
 }
 
@@ -473,7 +554,7 @@ function renderEmptyChart(label) {
     els.chartsContainer.appendChild(div);
 }
 
-function createCompareChart(title, labels, datasets) {
+function createCompareChart(title, labels, datasets, availableDimensions, onDimensionChange) {
     const div = document.createElement('div');
     div.className = 'chart-card';
 
@@ -481,9 +562,28 @@ function createCompareChart(title, labels, datasets) {
     const header = document.createElement('div');
     header.className = 'chart-header';
 
+    // Title container
+    const titleContainer = document.createElement('div');
     const h3 = document.createElement('h3');
     h3.textContent = title;
-    header.appendChild(h3);
+    titleContainer.appendChild(h3);
+
+    // Add subtitle or dimension label
+    if (availableDimensions && availableDimensions.length > 1) {
+        const select = document.createElement('select');
+        select.className = 'dimension-select';
+        availableDimensions.forEach(dim => {
+            const opt = document.createElement('option');
+            opt.value = dim.value;
+            opt.textContent = dim.label;
+            opt.selected = dim.selected;
+            select.appendChild(opt);
+        });
+        select.addEventListener('change', (e) => onDimensionChange(e.target.value));
+        titleContainer.appendChild(select);
+    }
+
+    header.appendChild(titleContainer);
 
     const downloadBtn = document.createElement('button');
     downloadBtn.className = 'icon-btn';

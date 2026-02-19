@@ -248,6 +248,17 @@ body {
     background-color: rgba(255, 255, 255, 0.05);
 }
 
+.group-header {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.5rem 0.5rem 0.25rem;
+    margin-top: 0.5rem;
+    border-bottom: 1px solid var(--border-dark);
+}
+
 .indicator-item input {
     margin-top: 0.25rem;
     cursor: pointer;
@@ -394,6 +405,22 @@ body {
 .icon-btn:hover {
     background: #e2e8f0;
     border-color: #cbd5e1;
+}
+
+/* Chart Controls */
+.dimension-select {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background-color: #f1f5f9;
+    color: var(--text-main);
+    cursor: pointer;
+    margin-top: 0.25rem;
+}
+
+.dimension-select:hover {
+    background-color: #e2e8f0;
 }
 
 .canvas-container {
