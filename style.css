@@ -255,8 +255,36 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.05em;
     padding: 0.5rem 0.5rem 0.25rem;
-    margin-top: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    user-select: none;
+}
+
+.group-header:hover {
+    color: var(--text-white);
+}
+
+.group-header .toggle-icon {
+    font-size: 0.6rem;
+    transition: transform 0.2s;
+}
+
+.indicator-group {
     border-bottom: 1px solid var(--border-dark);
+}
+
+.indicator-group:last-child {
+    border-bottom: none;
+}
+
+.group-items {
+    display: none;
+}
+
+.group-items.expanded {
+    display: block;
 }
 
 .indicator-item input {
@@ -375,6 +403,13 @@ body {
     gap: 1rem;
 }
 
+.title-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
 .chart-card h3 {
     font-size: 1rem;
     color: #1e293b;
@@ -408,6 +443,12 @@ body {
 }
 
 /* Chart Controls */
+.dimension-controls {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
 .dimension-select {
     padding: 0.25rem 0.5rem;
     font-size: 0.8rem;
@@ -416,7 +457,6 @@ body {
     background-color: #f1f5f9;
     color: var(--text-main);
     cursor: pointer;
-    margin-top: 0.25rem;
 }
 
 .dimension-select:hover {

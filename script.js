@@ -14,6 +14,10 @@ const API = {
 const state = {
     countries: [],
     indicators: [],
+    classifications: {
+        sex: {},      // mapping code to label
+        classif1: {}  // mapping code to label
+    },
     selectedCountries: new Set(), // Set of country codes
     selectedIndicators: new Set(),
     startYear: 2000, // Default start year
@@ -56,9 +60,11 @@ const els = {
 async function init() {
     updateStatus('Loading dictionaries...');
     try {
-        const [countriesRaw, indicatorsRaw] = await Promise.all([
+        const [countriesRaw, indicatorsRaw, sexRaw, classif1Raw] = await Promise.all([
             fetchCSV(API.dic('ref_area')),
-            fetchCSV(API.dic('indicator'))
+            fetchCSV(API.dic('indicator')),
+            fetchCSV(API.dic('sex')),
+            fetchCSV(API.dic('classif1'))
         ]);
 
         // Map local CSV headers to our app's expected structure
@@ -75,6 +81,19 @@ async function init() {
             Label: i['indicator.label'] || i.Label
         })).filter(i => i.Code && i.Label)
             .sort((a, b) => a.Label.localeCompare(b.Label));
+
+        // Build classification maps
+        sexRaw.forEach(s => {
+            const code = s.sex || s.Code;
+            const label = s['sex.label'] || s.Label;
+            if (code && label) state.classifications.sex[code] = label;
+        });
+
+        classif1Raw.forEach(c => {
+            const code = c.classif1 || c.Code;
+            const label = c['classif1.label'] || c.Label;
+            if (code && label) state.classifications.classif1[code] = label;
+        });
 
         // Initial Render
         renderCountryList(); // Populate the dropdown list
@@ -186,12 +205,6 @@ function renderIndicators(filter = '') {
     });
 
     // Render groups
-    const sortedGroups = Object.keys(groups).sort((a, b) => {
-        if (a === otherGroup) return 1;
-        if (b === otherGroup) return -1;
-        return a.localeCompare(b);
-    });
-
     sortedGroups.forEach(groupName => {
         const groupItems = groups[groupName].filter(ind => {
             return !term || ind.Label.toLowerCase().includes(term) || ind.Code.toLowerCase().includes(term);
@@ -199,10 +212,45 @@ function renderIndicators(filter = '') {
 
         if (groupItems.length === 0) return;
 
+        // Create a wrapper for the group
+        const groupWrapper = document.createElement('div');
+        groupWrapper.className = 'indicator-group';
+
         const groupHeader = document.createElement('div');
         groupHeader.className = 'group-header';
-        groupHeader.textContent = groupName;
-        els.indicatorList.appendChild(groupHeader);
+
+        // Add a toggle icon
+        const icon = document.createElement('span');
+        icon.className = 'toggle-icon';
+        icon.innerHTML = '▼';
+
+        const titleSpan = document.createElement('span');
+        titleSpan.textContent = groupName;
+
+        groupHeader.appendChild(icon);
+        groupHeader.appendChild(titleSpan);
+
+        // Container for items, controlled by header
+        const itemsContainer = document.createElement('div');
+        itemsContainer.className = 'group-items';
+
+        // Toggle logic: Expand all if searching, else default collapsed unless it's the first group
+        const isSearching = term.length > 0;
+        if (isSearching) {
+            itemsContainer.classList.add('expanded');
+            groupHeader.classList.add('expanded');
+        } else {
+            // Collapse by default for cleaner UI
+            icon.innerHTML = '▶';
+        }
+
+        groupHeader.addEventListener('click', () => {
+            const isExpanded = itemsContainer.classList.toggle('expanded');
+            groupHeader.classList.toggle('expanded', isExpanded);
+            icon.innerHTML = isExpanded ? '▼' : '▶';
+        });
+
+        groupWrapper.appendChild(groupHeader);
 
         groupItems.forEach(ind => {
             const item = document.createElement('label');
@@ -219,8 +267,11 @@ function renderIndicators(filter = '') {
 
             item.appendChild(checkbox);
             item.appendChild(text);
-            els.indicatorList.appendChild(item);
+            itemsContainer.appendChild(item);
         });
+
+        groupWrapper.appendChild(itemsContainer);
+        els.indicatorList.appendChild(groupWrapper);
     });
 }
 
@@ -423,7 +474,7 @@ async function fetchAndCacheCountryData(countryCode) {
 }
 
 // Helper to manage chart state (dimensions)
-const chartStates = {}; // { 'indCode': { sex: 'SEX_T' } }
+const chartStates = {}; // { 'indCode': { sex: 'SEX_T', classif1: null } }
 
 function processAndRenderData() {
     const selectedCntryCodes = Array.from(state.selectedCountries);
@@ -438,13 +489,6 @@ function processAndRenderData() {
 
     // For each indicator, create a comparison chart
     selectedIndCodes.forEach(indCode => {
-        // Initialize state if new
-        if (!chartStates[indCode]) {
-            chartStates[indCode] = { sex: 'SEX_T' };
-        }
-
-        const currentSex = chartStates[indCode].sex;
-
         // Find label
         const indicatorMeta = state.indicators.find(i => i.Code === indCode);
         const label = indicatorMeta ? indicatorMeta.Label : indCode;
@@ -453,8 +497,51 @@ function processAndRenderData() {
         const datasets = [];
         let allLabels = new Set(); // To unify X-axis (years)
 
-        // Collect Available Dimensions (e.g. check if SEX_M/SEX_F exist in data)
+        // Collect Available Dimensions for this indicator across all countries
         const availableSexes = new Set();
+        const availableClassif1 = new Set();
+
+        selectedCntryCodes.forEach(countryCode => {
+            const countryData = state.countryDataCache[countryCode];
+            if (!countryData) return;
+
+            let indData = countryData.filter(d => d.indicator === indCode);
+
+            // Check available dimensions before filtering
+            indData.forEach(d => {
+                if (d.sex) availableSexes.add(d.sex);
+                if (d.classif1) availableClassif1.add(d.classif1);
+            });
+        });
+
+        // Initialize state if new or missing properties
+        if (!chartStates[indCode]) {
+            chartStates[indCode] = { sex: 'SEX_T', classif1: null };
+
+            // Set default classif1 to a total/aggregate if available, otherwise first item
+            if (availableClassif1.size > 0) {
+                let bestValue = Array.from(availableClassif1).find(v =>
+                    v.includes('_TOTAL') ||
+                    v.includes('_AGGREGATE') ||
+                    v.endsWith('_Total')
+                );
+                chartStates[indCode].classif1 = bestValue || Array.from(availableClassif1)[0];
+            }
+        }
+
+        const currentSex = chartStates[indCode].sex;
+        let currentClassif1 = chartStates[indCode].classif1;
+
+        // Ensure current classif1 exists in available classif1
+        if (availableClassif1.size > 0 && !availableClassif1.has(currentClassif1)) {
+            let bestValue = Array.from(availableClassif1).find(v =>
+                v.includes('_TOTAL') ||
+                v.includes('_AGGREGATE') ||
+                v.endsWith('_Total')
+            );
+            currentClassif1 = bestValue || Array.from(availableClassif1)[0];
+            chartStates[indCode].classif1 = currentClassif1;
+        }
 
         selectedCntryCodes.forEach((countryCode, idx) => {
             const countryData = state.countryDataCache[countryCode];
@@ -462,32 +549,30 @@ function processAndRenderData() {
 
             let indData = countryData.filter(d => d.indicator === indCode);
 
-            // Check available sexes before filtering
-            indData.forEach(d => {
-                if (d.sex) availableSexes.add(d.sex);
-            });
-
             // Filter by Time Period
             indData = indData.filter(d => parseInt(d.time) >= state.startYear);
 
-            // Filter by Current Dimension State
-            indData = indData.filter(d => d.sex === currentSex);
+            // Filter by Current Sex State if sex is present
+            if (availableSexes.size > 0) {
+                indData = indData.filter(d => d.sex === currentSex);
+            }
 
             if (indData.length === 0) return;
 
-            // Simplify logic: Filter for Total/Aggregate across ALL classifications
-            // We need to ensure only ONE data point per year remains to avoid zig-zag lines.
+            // Filter by classif1 if present
+            if (availableClassif1.size > 0) {
+                indData = indData.filter(d => d.classif1 === currentClassif1);
+            }
 
-            // Identify all classification columns present in the data (classif1, classif2, etc.)
-            const classificationKeys = Object.keys(indData[0]).filter(k => k.startsWith('classif'));
+            // Identify any OTHER classification columns present in the data (classif2, classif3, etc.)
+            const otherClassificationKeys = Object.keys(indData[0]).filter(k => k.startsWith('classif') && k !== 'classif1');
 
-            classificationKeys.forEach(key => {
+            otherClassificationKeys.forEach(key => {
                 // Check if this key has multiple values in the current filtered set
                 const values = new Set(indData.map(d => d[key]));
                 if (values.size <= 1) return; // Already unique
 
                 // Try to find a "Total" or "Aggregate" value
-                // Heuristic: contains _TOTAL, _AGGREGATE, or ends with _Total
                 let bestValue = Array.from(values).find(v =>
                     v.includes('_TOTAL') ||
                     v.includes('_AGGREGATE') ||
@@ -523,28 +608,66 @@ function processAndRenderData() {
             });
         });
 
-        if (datasets.length === 0) {
-            renderEmptyChart(label);
-            return;
-        }
-
-        // Prepare Dimension Options
+        // Prepare Dimension Options FIRST, before checking if datasets is empty
         const dimensions = [];
-        // Map codes to labels (hardcoded fallback)
-        const sexLabels = { 'SEX_T': 'Total', 'SEX_F': 'Female', 'SEX_M': 'Male' };
 
         if (availableSexes.size > 1) {
             // Sort: Total, Female, Male
             const order = ['SEX_T', 'SEX_F', 'SEX_M'];
-            Array.from(availableSexes)
-                .sort((a, b) => order.indexOf(a) - order.indexOf(b))
-                .forEach(sexCode => {
-                    dimensions.push({
-                        value: sexCode,
-                        label: sexLabels[sexCode] || sexCode,
-                        selected: sexCode === currentSex
-                    });
-                });
+            const sexOptions = Array.from(availableSexes)
+                .sort((a, b) => {
+                    let idxA = order.indexOf(a);
+                    let idxB = order.indexOf(b);
+                    if (idxA === -1) idxA = 99;
+                    if (idxB === -1) idxB = 99;
+                    return idxA - idxB;
+                })
+                .map(sexCode => ({
+                    value: sexCode,
+                    label: state.classifications.sex[sexCode] || sexCode,
+                    selected: sexCode === currentSex
+                }));
+
+            dimensions.push({
+                type: 'sex',
+                options: sexOptions
+            });
+        }
+
+        if (availableClassif1.size > 1) {
+            const classif1Options = Array.from(availableClassif1)
+                // Try to put "total" formats at the top
+                .sort((a, b) => {
+                    const aIsTotal = a.includes('_TOTAL') || a.includes('_AGGREGATE');
+                    const bIsTotal = b.includes('_TOTAL') || b.includes('_AGGREGATE');
+                    if (aIsTotal && !bIsTotal) return -1;
+                    if (!aIsTotal && bIsTotal) return 1;
+
+                    // Then alphabetical by label
+                    const labelA = state.classifications.classif1[a] || a;
+                    const labelB = state.classifications.classif1[b] || b;
+                    return labelA.localeCompare(labelB);
+                })
+                .map(cCode => ({
+                    value: cCode,
+                    label: state.classifications.classif1[cCode] || cCode,
+                    selected: cCode === currentClassif1
+                }));
+
+            dimensions.push({
+                type: 'classif1',
+                options: classif1Options
+            });
+        }
+
+        const onDimensionChange = (dimType, newValue) => {
+            chartStates[indCode][dimType] = newValue;
+            processAndRenderData();
+        };
+
+        if (datasets.length === 0) {
+            renderEmptyChart(label, dimensions, onDimensionChange);
+            return;
         }
 
         const sortedLabels = Array.from(allLabels).sort((a, b) => parseInt(a) - parseInt(b));
@@ -553,24 +676,64 @@ function processAndRenderData() {
             sortedLabels,
             datasets,
             dimensions,
-            (newSex) => {
-                // Update state and re-render only this chart? 
-                // Currently re-renders all, but that's safe for consistency
-                chartStates[indCode].sex = newSex;
-                processAndRenderData();
-            }
+            onDimensionChange
         );
     });
 }
 
-function renderEmptyChart(label) {
+function renderEmptyChart(label, dimensions, onDimensionChange) {
     const div = document.createElement('div');
     div.className = 'chart-card';
-    div.innerHTML = `<h3>${label}</h3><p style="text-align:center; color:#94a3b8; padding: 2rem;">No data available for selected countries.</p>`;
+
+    // Create header with possible dimensions even if empty
+    const header = document.createElement('div');
+    header.className = 'chart-header';
+
+    const titleContainer = document.createElement('div');
+    titleContainer.className = 'title-container';
+
+    const h3 = document.createElement('h3');
+    h3.textContent = label;
+    titleContainer.appendChild(h3);
+
+    if (dimensions && dimensions.length > 0) {
+        const controlsDiv = document.createElement('div');
+        controlsDiv.className = 'dimension-controls';
+
+        dimensions.forEach(dimDef => {
+            const select = document.createElement('select');
+            select.className = 'dimension-select';
+
+            dimDef.options.forEach(optVal => {
+                const opt = document.createElement('option');
+                opt.value = optVal.value;
+                opt.textContent = optVal.label;
+                opt.selected = optVal.selected;
+                select.appendChild(opt);
+            });
+            if (onDimensionChange) {
+                select.addEventListener('change', (e) => onDimensionChange(dimDef.type, e.target.value));
+            }
+            controlsDiv.appendChild(select);
+        });
+
+        titleContainer.appendChild(controlsDiv);
+    }
+
+    header.appendChild(titleContainer);
+    div.appendChild(header);
+
+    const msg = document.createElement('p');
+    msg.style.textAlign = 'center';
+    msg.style.color = '#94a3b8';
+    msg.style.padding = '2rem';
+    msg.textContent = 'No data available for selected dimension(s).';
+    div.appendChild(msg);
+
     els.chartsContainer.appendChild(div);
 }
 
-function createCompareChart(title, labels, datasets, availableDimensions, onDimensionChange) {
+function createCompareChart(title, labels, datasets, dimensions, onDimensionChange) {
     const div = document.createElement('div');
     div.className = 'chart-card';
 
@@ -580,23 +743,36 @@ function createCompareChart(title, labels, datasets, availableDimensions, onDime
 
     // Title container
     const titleContainer = document.createElement('div');
+    titleContainer.className = 'title-container';
+
     const h3 = document.createElement('h3');
     h3.textContent = title;
     titleContainer.appendChild(h3);
 
     // Add subtitle or dimension label
-    if (availableDimensions && availableDimensions.length > 1) {
-        const select = document.createElement('select');
-        select.className = 'dimension-select';
-        availableDimensions.forEach(dim => {
-            const opt = document.createElement('option');
-            opt.value = dim.value;
-            opt.textContent = dim.label;
-            opt.selected = dim.selected;
-            select.appendChild(opt);
+    if (dimensions && dimensions.length > 0) {
+        const controlsDiv = document.createElement('div');
+        controlsDiv.className = 'dimension-controls';
+
+        dimensions.forEach(dimDef => {
+            const select = document.createElement('select');
+            select.className = 'dimension-select';
+
+            // Optional: add a small label for clarity based on dimDef.type
+            // if (dimDef.type === 'classif1') select.title = 'Classification';
+
+            dimDef.options.forEach(optVal => {
+                const opt = document.createElement('option');
+                opt.value = optVal.value;
+                opt.textContent = optVal.label;
+                opt.selected = optVal.selected;
+                select.appendChild(opt);
+            });
+            select.addEventListener('change', (e) => onDimensionChange(dimDef.type, e.target.value));
+            controlsDiv.appendChild(select);
         });
-        select.addEventListener('change', (e) => onDimensionChange(e.target.value));
-        titleContainer.appendChild(select);
+
+        titleContainer.appendChild(controlsDiv);
     }
 
     header.appendChild(titleContainer);
@@ -700,7 +876,7 @@ function downloadChart(chart, title) {
 
     // Trigger Download
     const link = document.createElement('a');
-    link.download = `${title.substring(0, 30).trim()}_ilostat.png`;
+    link.download = `${title.substring(0, 30).trim()} _ilostat.png`;
     link.href = newCanvas.toDataURL('image/png');
     link.click();
 }
