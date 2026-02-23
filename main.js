@@ -22,8 +22,49 @@ const state = {
     selectedIndicators: new Set(),
     startYear: 2000, // Default start year
     countryDataCache: {}, // { code: data[] }
+    isOffline: false,
     status: 'idle'
 };
+
+let db;
+async function initDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('ILOSTAT_Cache', 1);
+        request.onerror = (e) => resolve(null); // Silent fail, just don't cache
+        request.onsuccess = (e) => {
+            db = e.target.result;
+            resolve(db);
+        };
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('countryData')) {
+                db.createObjectStore('countryData', { keyPath: 'code' });
+            }
+        };
+    });
+}
+
+async function saveToDB(code, data) {
+    if (!db) return;
+    try {
+        const transaction = db.transaction(['countryData'], 'readwrite');
+        const store = transaction.objectStore('countryData');
+        store.put({ code, data, timestamp: Date.now() });
+    } catch (e) { console.warn('DB Save Error', e); }
+}
+
+async function getFromDB(code) {
+    if (!db) return null;
+    return new Promise((resolve) => {
+        try {
+            const transaction = db.transaction(['countryData'], 'readonly');
+            const store = transaction.objectStore('countryData');
+            const request = store.get(code);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => resolve(null);
+        } catch (e) { resolve(null); }
+    });
+}
 
 const ILO_COLORS = [
     '#3A4D98', // ILO Blue (Chambray)
@@ -99,6 +140,7 @@ async function init() {
         renderCountryList(); // Populate the dropdown list
         renderIndicators();
 
+        await initDB();
         setupEventListeners();
 
         updateStatus('Ready');
@@ -452,28 +494,64 @@ function downloadCSV() {
 
 
 async function fetchAndCacheCountryData(countryCode) {
-    // Return from cache if exists
+    // 1. Return from memory cache if exists
     if (state.countryDataCache[countryCode]) {
         return state.countryDataCache[countryCode];
     }
 
+    // 2. Try IndexedDB
+    const cached = await getFromDB(countryCode);
+    if (cached) {
+        console.log(`Using IndexedDB cache for ${countryCode}`);
+        state.countryDataCache[countryCode] = cached.data;
+        // Optional: Trigger background update if cache is old (> 1 day)
+        return cached.data;
+    }
+
+    // 3. Try primary API
     const url = API.data(countryCode);
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status} for ${countryCode}`);
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-    const buffer = await response.arrayBuffer();
-    const decompressed = fflate.gunzipSync(new Uint8Array(buffer));
-    const csvText = new TextDecoder().decode(decompressed);
+        const buffer = await response.arrayBuffer();
+        const decompressed = fflate.gunzipSync(new Uint8Array(buffer));
+        const csvText = new TextDecoder().decode(decompressed);
 
+        const data = await parseCSV(csvText);
+        state.countryDataCache[countryCode] = data;
+        saveToDB(countryCode, data); // Save for future offline use
+        return data;
+
+    } catch (err) {
+        console.warn(`Primary fetch failed for ${countryCode}, trying fallbacks...`, err);
+
+        // 4. Try local sample fallback (e.g. for CHE - Switzerland)
+        const sampleUrl = `${countryCode.toLowerCase()}_sample.csv.gz`;
+        try {
+            const resp = await fetch(sampleUrl);
+            if (!resp.ok) throw new Error('No local sample');
+
+            const buffer = await resp.arrayBuffer();
+            const decompressed = fflate.gunzipSync(new Uint8Array(buffer));
+            const csvText = new TextDecoder().decode(decompressed);
+
+            const data = await parseCSV(csvText);
+            state.countryDataCache[countryCode] = data;
+            updateStatus(`Loaded local sample for ${countryCode}`);
+            return data;
+        } catch (fallbackErr) {
+            throw new Error(`Failed to fetch and no local fallback available for ${countryCode}`);
+        }
+    }
+}
+
+function parseCSV(csvText) {
     return new Promise((resolve, reject) => {
         Papa.parse(csvText, {
             header: true,
             skipEmptyLines: true,
-            complete: (results) => {
-                // Add country code to each row just in case (though ref_area should be there)
-                state.countryDataCache[countryCode] = results.data;
-                resolve(results.data);
-            },
+            complete: (results) => resolve(results.data),
             error: (err) => reject(err)
         });
     });
