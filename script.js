@@ -205,6 +205,12 @@ function renderIndicators(filter = '') {
     });
 
     // Render groups
+    const sortedGroups = Object.keys(groups).sort((a, b) => {
+        if (a === otherGroup) return 1;
+        if (b === otherGroup) return -1;
+        return a.localeCompare(b);
+    });
+
     sortedGroups.forEach(groupName => {
         const groupItems = groups[groupName].filter(ind => {
             return !term || ind.Label.toLowerCase().includes(term) || ind.Code.toLowerCase().includes(term);
