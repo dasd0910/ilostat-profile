@@ -926,7 +926,7 @@ function createCompareChart(title, labels, datasets, dimensions, onDimensionChan
 
 function downloadChart(chart, title) {
     // strict safe-mode watermarking
-    const watermarkText = "Made with ILOSTAT Explore, made by Dibyaudh Das, ILO, with data from ILO STAT public website";
+    const watermarkText = "Made with Labour Data Explorer (beta), made by Dibyaudh Das, ILO, with data from ILO STAT public website";
 
     // Create a new canvas to combine chart and watermark
     const originalCanvas = chart.canvas;
