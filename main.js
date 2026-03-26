@@ -925,44 +925,102 @@ function createCompareChart(title, labels, datasets, dimensions, onDimensionChan
 }
 
 function downloadChart(chart, title) {
-    // strict safe-mode watermarking
-    const watermarkText = "Made with Labour Data Explorer (beta), made by Dibyaudh Das, ILO, with data from ILO STAT public website";
+  const watermarkText =
+    "Made with Labour Data Explorer (beta), made by Dibyaudh Das, ILO, with data from ILOSTAT public website";
 
-    // Create a new canvas to combine chart and watermark
-    const originalCanvas = chart.canvas;
-    const padding = 40;
-    const footerHeight = 50;
+  const originalCanvas = chart.canvas;
 
-    const newCanvas = document.createElement('canvas');
-    newCanvas.width = originalCanvas.width + (padding * 2);
-    newCanvas.height = originalCanvas.height + (padding * 2) + footerHeight;
-    const ctx = newCanvas.getContext('2d');
+  // --- Layout settings ---
+  const sidePadding = 40;
+  const topPadding = 30;
+  const bottomPadding = 20;
+  const footerHeight = 40;
+  const titleFont = "bold 24px Inter, sans-serif";
+  const footerFont = "12px Inter, sans-serif";
+  const titleLineHeight = 30;
+  const chartTopGap = 20;
 
-    // Fill background white
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, newCanvas.width, newCanvas.height);
+  // --- Helper: wrap title into multiple lines ---
+  function wrapText(ctx, text, maxWidth) {
+    const words = text.split(" ");
+    const lines = [];
+    let currentLine = "";
 
-    // Draw Title
-    ctx.fillStyle = '#1e293b';
-    ctx.font = 'bold 24px Inter, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(title, newCanvas.width / 2, 50);
+    for (let i = 0; i < words.length; i++) {
+      const testLine = currentLine ? currentLine + " " + words[i] : words[i];
+      const testWidth = ctx.measureText(testLine).width;
 
-    // Draw Chart
-    // We need to use the original canvas image
-    ctx.drawImage(originalCanvas, padding, padding + 30);
+      if (testWidth > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = words[i];
+      } else {
+        currentLine = testLine;
+      }
+    }
 
-    // Draw Watermark
-    ctx.fillStyle = '#64748b';
-    ctx.font = '12px Inter, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(watermarkText, newCanvas.width - padding, newCanvas.height - 20);
+    if (currentLine) lines.push(currentLine);
+    return lines;
+  }
 
-    // Trigger Download
-    const link = document.createElement('a');
-    link.download = `${title.substring(0, 30).trim()} _ilostat.png`;
-    link.href = newCanvas.toDataURL('image/png');
-    link.click();
+  // --- Create temp canvas context just to measure title ---
+  const tempCanvas = document.createElement("canvas");
+  const tempCtx = tempCanvas.getContext("2d");
+  tempCtx.font = titleFont;
+
+  const maxTitleWidth = originalCanvas.width + sidePadding * 2 - 40;
+  const titleLines = wrapText(tempCtx, title, maxTitleWidth);
+  const titleHeight = titleLines.length * titleLineHeight;
+
+  // --- Final export canvas size ---
+  const newCanvas = document.createElement("canvas");
+  newCanvas.width = originalCanvas.width + sidePadding * 2;
+  newCanvas.height =
+    topPadding +
+    titleHeight +
+    chartTopGap +
+    originalCanvas.height +
+    footerHeight +
+    bottomPadding;
+
+  const ctx = newCanvas.getContext("2d");
+
+  // Background
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, newCanvas.width, newCanvas.height);
+
+  // Draw title
+  ctx.fillStyle = "#1e293b";
+  ctx.font = titleFont;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+
+  let currentY = topPadding;
+  titleLines.forEach((line) => {
+    ctx.fillText(line, newCanvas.width / 2, currentY);
+    currentY += titleLineHeight;
+  });
+
+  // Draw chart below title
+  const chartY = topPadding + titleHeight + chartTopGap;
+  ctx.drawImage(originalCanvas, sidePadding, chartY);
+
+  // Draw watermark/footer
+  ctx.fillStyle = "#64748b";
+  ctx.font = footerFont;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(
+    watermarkText,
+    newCanvas.width - sidePadding,
+    newCanvas.height - 15
+  );
+
+  // Download
+  const safeTitle = title.replace(/[<>:"/\\|?*]+/g, "").substring(0, 60).trim();
+  const link = document.createElement("a");
+  link.download = `${safeTitle || "chart"}_ilostat.png`;
+  link.href = newCanvas.toDataURL("image/png");
+  link.click();
 }
 
 window.addEventListener('DOMContentLoaded', init);
