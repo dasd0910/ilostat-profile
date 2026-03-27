@@ -32,15 +32,25 @@
     padding: 0;
 }
 
-body {
-   body {
-  font-family: 'Noto Sans', Arial, sans-serif;
-  color: var(--text-main);
-  background-color: #f1f5f9;
-  height: 100vh;
-  overflow: hidden;
-}
+body { font-family: 'Noto Sans', Arial, sans-serif; color: var(--text-main); background-color: #f1f5f9; height: 100vh; overflow: hidden; }
+button, input, select, textarea, option, label, .small-text, .range-labels, .tag, .dropdown-item, .text-btn, .primary-btn, .secondary-btn, .dimension-select { font-family: 'Noto Sans', Arial, sans-serif; }
+h1, h2, h3, h4, h5, h6, .brand h1, .brand .light, .main-header h2, .chart-card h3 { font-family: 'Overpass', Arial, sans-serif; }
 
+button,
+input,
+select,
+textarea,
+option,
+label,
+.small-text,
+.range-labels,
+.tag,
+.dropdown-item,
+.text-btn,
+.primary-btn,
+.dimension-select {
+  font-family: 'Noto Sans', Arial, sans-serif;
+}
 
 .app-container {
     display: flex;
@@ -61,12 +71,7 @@ body {
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.1);
 }
 
-.brand h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    letter-spacing: -0.025em;
-    color: #fff;
-}
+.brand h1 { font-family: 'Overpass', Arial, sans-serif; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em; color: #fff; }
 
 .brand .light {
   font-weight: 300;
@@ -383,12 +388,7 @@ body {
     padding-bottom: 1rem;
 }
 
-.main-header h2 {
-  font-size: 1.875rem;
-  color: var(--ilo-black);
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-}
+.main-header h2 { font-family: 'Overpass', Arial, sans-serif; font-size: 1.875rem; color: var(--ilo-black); margin-bottom: 0.5rem; font-weight: 700; }
 
 .report-meta {
     color: #64748b;
@@ -402,13 +402,7 @@ body {
     gap: 1.5rem;
 }
 
-.chart-card {
-    background: var(--bg-card);
-    padding: 1.5rem;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border);
-}
+.chart-card { background: #EBF5FD; padding: 1.5rem; border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid #D7EAF8; }
 
 .chart-header {
     display: flex;
@@ -425,19 +419,7 @@ body {
     gap: 0.5rem;
 }
 
-.chart-card h3 {
-  font-size: 1rem;
-  color: var(--ilo-black);
-  margin-bottom: 0;
-  font-weight: 600;
-  line-height: 1.4;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
+.chart-card h3 { font-family: 'Overpass', Arial, sans-serif; font-size: 1rem; color: var(--ilo-black); margin-bottom: 0; font-weight: 700; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
 
 .icon-btn {
     background: #f1f5f9;
@@ -479,11 +461,7 @@ body {
     background-color: #e2e8f0;
 }
 
-.canvas-container {
-    position: relative;
-    height: 300px;
-    width: 100%;
-}
+.canvas-container { position: relative; height: 300px; width: 100%; background: #EBF5FD; border-radius: 6px; }
 
 /* Empty State */
 .empty-state {
