@@ -104,10 +104,34 @@ if (window.Chart) {
   Chart.defaults.backgroundColor = ILO_THEME.primary.blue;
 }
 
+const chartAreaBgPlugin = {
+  id: "chartAreaBgPlugin",
+  beforeDraw(chart, args, pluginOptions) {
+    const { ctx, chartArea } = chart;
+    if (!chartArea) return;
+
+    ctx.save();
+    ctx.fillStyle = (pluginOptions && pluginOptions.color) ? pluginOptions.color : "#EBF5FD";
+    ctx.fillRect(
+      chartArea.left,
+      chartArea.top,
+      chartArea.right - chartArea.left,
+      chartArea.bottom - chartArea.top
+    );
+    ctx.restore();
+  }
+};
+
+if (window.Chart) {
+  Chart.register(chartAreaBgPlugin);
+}
 const ILO_CHART_OPTIONS = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
+    chartAreaBgPlugin: {
+      color: "#EBF5FD"
+    },
     tooltip: {
       mode: "index",
       intersect: false,
@@ -1046,7 +1070,7 @@ const footerFont = "12px 'Noto Sans', Arial, sans-serif";
   const ctx = newCanvas.getContext("2d");
 
   // Background
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = "#EBF5FD";
   ctx.fillRect(0, 0, newCanvas.width, newCanvas.height);
 
   // Draw title
