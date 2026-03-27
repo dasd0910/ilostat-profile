@@ -66,16 +66,109 @@ async function getFromDB(code) {
     });
 }
 
-const ILO_COLORS = [
-    '#3A4D98', // ILO Blue (Chambray)
-    '#E40046', // ILO Red (Social Justice)
-    '#1E2DBE', // Persian Blue
-    '#230050', // Dark Blue
-    '#FA3C4B', // Light Red
-    '#00A3A1', // Teal (Complimentary)
-    '#FFC20E', // Yellow (Complimentary)
-    '#5D6770', // Grey
+const ILO_THEME = {
+  primary: {
+    blue: "#1E2DBE",
+    red: "#FA3C4B",
+    white: "#FFFFFF",
+    black: "#000000"
+  },
+  blueRamp: ["#230050", "#151F85", "#1E2DBE", "#3264C8"],
+  neutrals: {
+    grid: "#D9DDE5",
+    mutedText: "#64748b"
+  },
+  font: {
+    family: "'Noto Sans', Arial, sans-serif",
+    weight: "600"
+  }
+};
+
+const ILO_COMPARISON_COLORS = [
+  "#1E2DBE",
+  "#FA3C4B",
+  "#151F85",
+  "#3264C8",
+  "#230050",
+  "#64748b",
+  "#94a3b8",
+  "#cbd5e1"
 ];
+
+if (window.Chart) {
+  Chart.defaults.color = ILO_THEME.primary.black;
+  Chart.defaults.font.family = ILO_THEME.font.family;
+  Chart.defaults.font.size = 12;
+  Chart.defaults.font.weight = ILO_THEME.font.weight;
+  Chart.defaults.borderColor = ILO_THEME.neutrals.grid;
+  Chart.defaults.backgroundColor = ILO_THEME.primary.blue;
+}
+
+const ILO_CHART_OPTIONS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    tooltip: {
+      mode: "index",
+      intersect: false,
+      titleFont: {
+        family: ILO_THEME.font.family,
+        weight: "600"
+      },
+      bodyFont: {
+        family: ILO_THEME.font.family
+      }
+    },
+    legend: {
+      display: true,
+      position: "bottom",
+      labels: {
+        color: ILO_THEME.primary.black,
+        boxWidth: 12,
+        padding: 20,
+        font: {
+          family: ILO_THEME.font.family,
+          size: 12,
+          weight: "600"
+        }
+      }
+    }
+  },
+  interaction: {
+    mode: "nearest",
+    axis: "x",
+    intersect: false
+  },
+  scales: {
+    y: {
+      beginAtZero: false,
+      ticks: {
+        color: ILO_THEME.primary.black,
+        font: {
+          family: ILO_THEME.font.family,
+          weight: "600"
+        },
+        padding: 7
+      },
+      grid: {
+        color: ILO_THEME.neutrals.grid
+      }
+    },
+    x: {
+      ticks: {
+        color: ILO_THEME.primary.black,
+        font: {
+          family: ILO_THEME.font.family,
+          weight: "600"
+        },
+        padding: 7
+      },
+      grid: {
+        display: false
+      }
+    }
+  }
+};
 
 // DOM Elements
 const els = {
@@ -679,17 +772,20 @@ function processAndRenderData() {
             indData.sort((a, b) => parseInt(a.time) - parseInt(b.time));
 
             const countryLabel = state.countries.find(c => c.Code === countryCode)?.Label || countryCode;
-            const colorBase = ILO_COLORS[idx % ILO_COLORS.length]; // Cycle through ILO palette
+            const colorBase = ILO_COMPARISON_COLORS[idx % ILO_COMPARISON_COLORS.length]; // Cycle through ILO palette
 
-            datasets.push({
-                label: countryLabel, // Or find Label from dictionary
-                data: indData.map(d => ({ x: d.time, y: parseFloat(d.obs_value) })),
-                borderColor: colorBase,
-                backgroundColor: colorBase,
-                borderWidth: 2,
-                tension: 0.3,
-                pointRadius: 3
-            });
+           datasets.push({
+  label: countryLabel,
+  data: indData.map(d => ({ x: d.time, y: parseFloat(d.obs_value) })),
+  borderColor: colorBase,
+  backgroundColor: colorBase,
+  pointBackgroundColor: colorBase,
+  pointBorderColor: colorBase,
+  borderWidth: 2.5,
+  tension: 0.25,
+  pointRadius: 3,
+  pointHoverRadius: 5
+});
         });
 
         // Prepare Dimension Options FIRST, before checking if datasets is empty
@@ -883,42 +979,7 @@ function createCompareChart(title, labels, datasets, dimensions, onDimensionChan
             labels: labels,
             datasets: datasets
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                tooltip: {
-                    mode: 'index',
-                    intersect: false
-                },
-                legend: {
-                    display: true,
-                    position: 'bottom',
-                    labels: {
-                        boxWidth: 12,
-                        padding: 20
-                    }
-                }
-            },
-            interaction: {
-                mode: 'nearest',
-                axis: 'x',
-                intersect: false
-            },
-            scales: {
-                y: {
-                    beginAtZero: false,
-                    grid: {
-                        color: '#f1f5f9'
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false
-                    }
-                }
-            }
-        }
+       options: { ...ILO_CHART_OPTIONS }
     });
 
     downloadBtn.addEventListener('click', () => downloadChart(chart, title));
@@ -935,8 +996,8 @@ function downloadChart(chart, title) {
   const topPadding = 30;
   const bottomPadding = 20;
   const footerHeight = 40;
-  const titleFont = "bold 24px Inter, sans-serif";
-  const footerFont = "12px Inter, sans-serif";
+  const titleFont = "600 24px 'Noto Sans', Arial, sans-serif";
+const footerFont = "12px 'Noto Sans', Arial, sans-serif";
   const titleLineHeight = 30;
   const chartTopGap = 20;
 
@@ -989,7 +1050,7 @@ function downloadChart(chart, title) {
   ctx.fillRect(0, 0, newCanvas.width, newCanvas.height);
 
   // Draw title
-  ctx.fillStyle = "#1e293b";
+  ctx.fillStyle = "#000000";
   ctx.font = titleFont;
   ctx.textAlign = "center";
   ctx.textBaseline = "top";
